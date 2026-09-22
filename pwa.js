@@ -9,7 +9,18 @@
   if (isElectron) return;
   if (!('serviceWorker' in navigator)) return;
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch((err) => {
+    // Found live on the S5 production deploy (PS-153): some browsers
+    // enforce Trusted Types on ServiceWorkerContainer.register() and
+    // reject a bare string ("This document requires 'TrustedScriptURL'
+    // assignment"). Our CSP declares no `trusted-types` allowlist, so
+    // policy creation itself stays unrestricted - feature-detected, so
+    // browsers without Trusted Types just use the plain string as before.
+    let swUrl = 'sw.js';
+    if (window.trustedTypes && window.trustedTypes.createPolicy) {
+      const policy = window.trustedTypes.createPolicy('tuna-sw', { createScriptURL: (url) => url });
+      swUrl = policy.createScriptURL('sw.js');
+    }
+    navigator.serviceWorker.register(swUrl).catch((err) => {
       console.warn('[Tuna] service worker registration failed:', err.message);
     });
   });
